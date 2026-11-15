@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Leap AI · Profile Agent prototype</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Instrument+Serif:ital@1&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --p:#5452E4; --p-ink:#4A48C8; --pt:#EEEDFC; --pt2:#F5F4FD; --lav:#C9BFF7;
+  --or:#F47B20; --or-ink:#B4500B; --ort:#FDEEE3;
+  --gr:#15803D; --grt:#E6F4EA;
+  --ink:#1C1B2E; --grey:#6B6A7B; --grey2:#9A99A8; --line:#E7E6EE; --warm:#F7F6F3; --surf:#F2F2F5; --w:#fff;
+  --chrome:#323436; --chrome2:#5E6163;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:Figtree,system-ui,sans-serif;color:var(--ink);background:#E9E8F1;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;border:0;background:none;padding:0;cursor:pointer}
+input,textarea{font:inherit;color:inherit}
+svg{display:block;flex:none}
+.mono{font-family:'JetBrains Mono',monospace;letter-spacing:.18em;font-size:11px}
+.serif{font-family:'Instrument Serif',serif;font-style:italic;font-weight:400}
+
+/* ---------- stage ---------- */
+.stage{min-height:100%;display:flex;align-items:center;justify-content:center;gap:64px;padding:32px}
+.aside{max-width:300px}
+.aside h1{font-size:28px;line-height:1.15;margin:12px 0 10px;letter-spacing:-.02em}
+.aside p{color:var(--grey);font-size:15px;line-height:1.55;margin:0 0 14px}
+.aside .paths{display:flex;flex-direction:column;gap:8px;margin:18px 0 22px}
+.aside .path{background:#fff;border-radius:12px;padding:12px 14px;font-size:14px;line-height:1.4;box-shadow:0 1px 2px rgba(28,27,46,.05)}
+.aside .path b{display:block;font-size:13px;color:var(--p-ink);margin-bottom:2px}
+.restart{display:inline-flex;align-items:center;gap:8px;background:var(--ink);color:#fff;border-radius:12px;padding:12px 16px;font-weight:600;font-size:14px}
+.aside small{display:block;margin-top:18px;color:var(--grey2);font-size:12px}
+
+.device{width:414px;height:868px;border-radius:58px;background:#16151F;padding:12px;box-shadow:0 30px 80px rgba(28,27,46,.28),0 0 0 1px rgba(255,255,255,.04) inset;flex:none}
+.phone{position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:#fff}
+.ctop{position:absolute;top:0;left:0;right:0;height:110px;background:var(--chrome);z-index:50;color:#fff}
+.ctop .time{position:absolute;left:52px;top:17px;font-weight:600;font-size:17px}
+.ctop .sbar{position:absolute;right:30px;top:21px;display:flex;align-items:center;gap:6px}
+.bars{display:flex;align-items:flex-end;gap:2px;height:12px}.bars i{width:3px;border-radius:1px;background:#fff}.bars i.d{background:#8b8e90}
+.batt{background:#d9d9d9;color:var(--chrome);font-size:10px;font-weight:700;border-radius:4px;padding:0 5px;height:13px;line-height:13px}
+.url{position:absolute;left:9px;right:9px;top:63px;height:36px;border-radius:18px;background:var(--chrome2);display:flex;align-items:center;justify-content:space-between;padding:0 14px;font-size:17px}
+.cbot{position:absolute;left:0;right:0;bottom:0;height:78px;background:var(--chrome);z-index:50;display:flex;justify-content:space-around;align-items:flex-start;padding-top:12px;color:#fff}
+.cbot .plus{width:36px;height:36px;border-radius:50%;background:var(--chrome2);display:flex;align-items:center;justify-content:center;margin-top:-4px}
+.cbot .tabs{width:24px;height:24px;border:2px solid #fff;border-radius:6px;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.home{position:absolute;bottom:7px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:#fff}
+.vp{position:absolute;top:110px;bottom:78px;left:0;right:0;overflow:hidden;background:#fff}
+
+body.native{background:#fff}
+body.native .stage{padding:0;display:block}
+body.native .aside{display:none}
+body.native .devwrap{width:100vw!important;height:100dvh!important}
+body.native .device{transform:none!important;width:100vw;height:100dvh;border-radius:0;padding:0;box-shadow:none;background:#fff}
+body.native .phone{width:100%;height:100%;border-radius:0}
+body.native .ctop,body.native .cbot{display:none}
+body.native .vp{top:0;bottom:0}
+.devwrap{flex:none;width:calc(414px * var(--k,1));height:calc(868px * var(--k,1))}
+.device{transform:scale(var(--k,1));transform-origin:top left}
+body.narrow .aside{display:none}
+body.narrow .stage{gap:0}
+.stage{height:100%;min-height:0;overflow:hidden;padding:16px}
+
+/* ---------- screens ---------- */
+.screen{position:absolute;inset:0;display:none;flex-direction:column;background:#fff}
+.screen.on{display:flex}
+.screen.in-r{animation:inR .32s cubic-bezier(.2,.8,.2,1)}
+.screen.in-l{animation:inL .32s cubic-bezier(.2,.8,.2,1)}
+.screen.fade{animation:fadeIn .4s ease}
+@keyframes inR{from{transform:translateX(40px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes inL{from{transform:translateX(-40px);opacity:.3}to{transform:none;opacity:1}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.scroll{overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+
+/* ---------- landing ---------- */
+#landing{background:var(--warm)}
+#landing .scroll{flex:1;position:relative}
+.lnav{position:sticky;top:0;z-index:10;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:12px 20px}
+.logo{display:flex;align-items:center;gap:8px;font-weight:700;font-size:16px;letter-spacing:.01em}
+.logo .l{color:var(--p)}.logo .s{color:var(--or)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border-radius:12px;background:var(--p);color:#fff;font-weight:600;font-size:15px;min-height:48px;padding:0 18px;transition:transform .12s, opacity .2s}
+.btn:active{transform:scale(.98)}
+.btn.sm{min-height:36px;font-size:13px;padding:0 14px}
+.btn.white{background:#fff;color:var(--p)}
+.btn.soft{background:var(--pt);color:var(--p-ink)}
+.btn.dark{background:var(--ink)}
+.btn[disabled]{background:#E4E3EA;color:#9A99A8;cursor:default}
+.hero{background:linear-gradient(180deg,#2A1A6B,#110C24);padding:36px 20px 40px;color:#fff;display:flex;flex-direction:column;gap:20px}
+.hero .mono{color:var(--lav)}
+.hero h1{margin:0;font-size:32px;line-height:1.14;letter-spacing:-.02em;font-weight:700}
+.hero h1 .serif{color:var(--lav);font-size:38px}
+.hero p{margin:0;color:#D1CFE6;font-size:15px;line-height:1.5}
+.ask{display:flex;align-items:center;gap:10px;background:#fff;border-radius:16px;padding:8px 8px 8px 16px;box-shadow:0 10px 30px rgba(84,82,228,.35);text-align:left;width:100%}
+.ask .ph{flex:1;color:var(--grey);font-size:15px;white-space:nowrap;overflow:hidden;min-height:22px}
+.ask .caret{display:inline-block;width:1.5px;height:17px;background:var(--p);vertical-align:-3px;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.ask .go{width:40px;height:40px;border-radius:12px;background:var(--p);display:flex;align-items:center;justify-content:center}
+.hchips{display:flex;gap:8px;flex-wrap:wrap}
+.hchip{border-radius:999px;padding:8px 12px;font-size:13px;font-weight:500;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.2);color:#fff}
+.trust{display:flex;align-items:center;gap:6px;font-size:12px;color:#BFBDD8}
+.sec{padding:40px 20px;display:flex;flex-direction:column;gap:20px}
+.sec.white{background:#fff}
+.sh{display:flex;flex-direction:column;gap:8px}
+.sh .mono{color:var(--p)}
+.sh h2{margin:0;font-size:24px;line-height:1.22;letter-spacing:-.01em}
+.sh h2 .serif{color:var(--p);font-size:28px}
+.sh p{margin:0;color:var(--grey);font-size:14px;line-height:1.5}
+.card{background:#fff;border-radius:20px;box-shadow:0 1px 2px rgba(28,27,46,.04),0 12px 32px rgba(28,27,46,.06)}
+.ucard{padding:24px;display:flex;flex-direction:column;gap:20px}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 12px 5px 10px;font-size:12px;font-weight:600}
+.badge i{width:7px;height:7px;border-radius:50%;background:currentColor}
+.b-good{background:var(--grt);color:var(--gr)}.b-amb{background:var(--ort);color:var(--or-ink)}.b-safe{background:var(--pt);color:var(--p-ink)}
+.urow{display:flex;justify-content:space-between;align-items:center}
+.uname{margin:0;font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.usub{margin:6px 0 0;color:var(--grey);font-size:14px}
+.price{display:flex;align-items:baseline;gap:8px}
+.price b{font-size:30px;color:var(--or);letter-spacing:-.02em}
+.price span{font-size:14px;color:var(--grey)}
+.hr{height:1px;background:var(--line)}
+.reasons{display:flex;flex-direction:column;gap:14px}
+.reason{display:flex;align-items:center;gap:12px;font-size:15px;line-height:1.35}
+.ib{width:36px;height:36px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex:none}
+.ib.p{background:var(--pt);color:var(--p)}.ib.o{background:var(--ort);color:var(--or)}.ib.g{background:var(--grt);color:var(--gr)}
+.step{background:var(--warm);border-radius:16px;padding:18px;display:flex;gap:14px}
+.step .n{width:40px;height:40px;border-radius:12px;background:var(--p);color:#fff;display:flex;align-items:center;justify-content:center;flex:none}
+.step .mono{font-size:10px;color:var(--p)}
+.step h3{margin:4px 0;font-size:16px}.step p{margin:0;font-size:13px;color:var(--grey);line-height:1.45}
+.stat{border-radius:16px;padding:22px;display:flex;align-items:center;gap:16px;color:#fff;background:linear-gradient(135deg,#2A1A6B,#5452E4)}
+.stat b{font-size:34px}.stat span{font-size:14px;color:#E0DEF7;line-height:1.4}
+.list .li{display:flex;align-items:center;gap:14px;padding:16px 20px}
+.list .li+.li{border-top:1px solid var(--line)}
+.list h4{margin:0;font-size:15px}.list p{margin:2px 0 0;font-size:13px;color:var(--grey)}
+.pcard{display:flex;align-items:center;gap:14px;padding:20px;text-align:left;width:100%}
+.pcard h4{margin:0;font-size:15px}.pcard p{margin:2px 0 0;font-size:13px;color:var(--grey)}
+details{border-top:1px solid var(--line)}details:first-child{border-top:0}
+summary{list-style:none;display:flex;justify-content:space-between;align-items:center;padding:18px 20px;font-weight:500;font-size:15px;cursor:pointer}
+summary::-webkit-details-marker{display:none}
+details[open] summary svg{transform:rotate(45deg)}summary svg{transition:transform .2s}
+details p{margin:0;padding:0 20px 18px;color:var(--grey);font-size:14px;line-height:1.5}
+.final{border-radius:20px;padding:28px;color:#fff;background:linear-gradient(135deg,#2A1A6B,#5452E4);display:flex;flex-direction:column;gap:14px}
+.final .mono{color:var(--lav)}
+.final h3{margin:0;font-size:24px;line-height:1.22}
+.final h3 .serif{color:var(--lav);font-size:28px}
+.final p{margin:0;font-size:14px;color:#D9D7F0}
+.sticky{position:absolute;left:0;right:0;bottom:0;padding:12px 20px 16px;background:#fff;box-shadow:0 -4px 16px rgba(28,27,46,.08);z-index:20;transition:transform .3s ease, opacity .3s ease}
+.sticky.hide{transform:translateY(100%);opacity:0;pointer-events:none}
+
+/* entrance + press feedback */
+.hero>*{animation:up .6s cubic-bezier(.2,.8,.2,1) both}
+.hero>*:nth-child(2){animation-delay:.08s}.hero>*:nth-child(3){animation-delay:.16s}.hero>*:nth-child(4){animation-delay:.24s}.hero>*:nth-child(5){animation-delay:.32s}.hero>*:nth-child(6){animation-delay:.4s}
+.tile:active,.opt:active,.chip:active,.hchip:active,.fl:active,.sg:active,.pcard:active,.ask:active{transform:scale(.97)}
+.tile,.opt,.chip,.hchip,.fl,.sg,.pcard,.ask{transition:transform .12s ease, background .15s, border-color .15s}
+@media (hover:hover){.opt:hover,.tile:hover,.chip:hover,.sg:hover{border-color:#C9C8D3}.ask:hover{box-shadow:0 12px 34px rgba(84,82,228,.45)}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.aside .look{margin:0 0 20px;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--grey)}
+.aside .look li::before{content:'';display:inline-block;width:6px;height:6px;background:var(--or);transform:rotate(45deg);margin-right:8px;vertical-align:1px}
+/* ---------- chat ---------- */
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--line);background:#fff;z-index:5}
+.topbar .t{flex:1}
+.topbar h3{margin:0;font-size:16px;font-weight:600}
+.topbar .on{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--grey)}
+.topbar .on i{width:7px;height:7px;border-radius:50%;background:var(--gr)}
+.ibtn{width:40px;height:40px;display:flex;align-items:center;justify-content:center;border-radius:12px}
+.ibtn:active{background:var(--surf)}
+.prog{padding:10px 16px 12px;border-bottom:1px solid var(--line);display:none}
+.prog.show{display:block}
+.prog .r{display:flex;justify-content:space-between;font-size:12px;color:var(--grey);margin-bottom:6px}
+.prog .r b{color:var(--ink)}
+.track{height:4px;border-radius:2px;background:var(--surf);overflow:hidden}
+.track i{display:block;height:100%;background:var(--p);width:0;transition:width .4s ease;border-radius:2px}
+.conv{flex:1;padding:20px 16px 12px;display:flex;flex-direction:column;gap:20px}
+.msg{animation:up .3s ease}
+@keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ai{display:flex;gap:10px}
+.av{width:26px;height:26px;border-radius:50%;background:var(--p);display:flex;align-items:center;justify-content:center;flex:none;color:#fff}
+.ai .body{flex:1;font-size:15px;line-height:1.5;display:flex;flex-direction:column;gap:8px;padding-top:2px}
+.acts{display:flex;gap:14px;color:var(--grey2)}
+.dots{display:flex;gap:4px;padding:9px 0}
+.dots i{width:7px;height:7px;border-radius:50%;background:#C9C8D3;animation:dot 1s infinite}
+.dots i:nth-child(2){animation-delay:.15s}.dots i:nth-child(3){animation-delay:.3s}
+@keyframes dot{0%,80%,100%{opacity:.3;transform:none}40%{opacity:1;transform:translateY(-3px)}}
+.user{display:flex;justify-content:flex-end}
+.bub{background:var(--surf);border-radius:20px;padding:10px 14px;font-size:15px;line-height:1.45;max-width:82%}
+.fileb{background:#fff;border:1px solid var(--line);border-radius:16px;padding:12px 14px;max-width:85%;display:flex;flex-direction:column;gap:8px}
+.fileb .h{display:flex;align-items:center;gap:10px}
+.fileb .h b{font-size:14px}.fileb .h span{font-size:12px;color:var(--grey);display:block}
+.fileb p{margin:0;font-size:13px;color:var(--grey);line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.prompt{margin-left:36px;border:1px solid var(--line);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.prompt .h{display:flex;justify-content:space-between;align-items:center}
+.prompt .mono{font-size:10px;color:var(--p)}
+.prompt p{margin:0;font-size:13px;line-height:1.5;color:var(--grey)}
+.copy{display:flex;align-items:center;gap:6px;border-radius:999px;padding:6px 12px;font-size:12px;font-weight:600;background:var(--p);color:#fff;transition:background .2s}
+.copy.done{background:var(--grt);color:var(--gr)}
+.works{margin:4px 0 0 36px;font-size:12px;color:var(--grey2)}
+/* form block in chat */
+.qblock{margin-left:36px;display:flex;flex-direction:column;gap:22px}
+.q{display:flex;flex-direction:column;gap:12px;animation:up .35s ease}
+.q h5{margin:0;font-size:15px;font-weight:600;display:flex;align-items:center;gap:10px}
+.q h5 .dia{position:relative;width:9px;height:9px;transform:rotate(45deg);flex:none;border:1.5px solid var(--p);background:transparent;transition:background .25s}
+.q.done h5 .dia{background:var(--p)}
+.q.active h5 .dia{background:var(--p)}
+.q.active h5 .dia::before,.q.active h5 .dia::after{content:'';position:absolute;inset:-1.5px;border-radius:1px;background:var(--p);opacity:.45;animation:beat 1.8s ease-out infinite}
+.q.active h5 .dia::after{animation-delay:.6s}
+@keyframes beat{0%{transform:scale(1);opacity:.45}100%{transform:scale(2.8);opacity:0}}
+.q{transition:opacity .25s}
+.q.pending{opacity:.45}
+.q.pending h5{font-weight:500}
+.tiles{display:grid;gap:8px}
+.tile{position:relative;min-height:46px;border-radius:10px;border:1px solid var(--line);background:#fff;font-size:13px;font-weight:500;display:flex;align-items:center;justify-content:center;padding:6px 8px;text-align:center;transition:all .15s}
+.tile.sel{background:var(--pt);border:1.5px solid var(--p);color:var(--p);font-weight:600}
+.tile .rec{position:absolute;top:-8px;left:6px;font-size:9px;font-weight:600;background:var(--grt);color:var(--gr);border-radius:999px;padding:2px 6px}
+.ctile{min-height:68px;flex-direction:column;align-items:flex-start;justify-content:space-between;padding:10px 12px;font-weight:600}
+.ctile .top{display:flex;width:100%;justify-content:space-between;align-items:center;font-size:20px}
+.cb{width:18px;height:18px;border-radius:5px;border:1px solid var(--line);display:flex;align-items:center;justify-content:center;background:#fff;color:#fff}
+.tile.sel .cb{background:var(--p);border-color:var(--p)}
+.inrow{display:flex;gap:8px}
+.inp{flex:1;height:46px;border:1px solid var(--line);border-radius:10px;padding:0 14px;font-size:15px;outline:none;background:#fff}
+.inp:focus{border:1.5px solid var(--p)}
+.sugg{display:flex;gap:8px;flex-wrap:wrap}
+.sg{border:1px solid var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:500;background:#fff}
+.okb{height:46px;min-height:46px;padding:0 16px}
+.done-note{font-size:12px;color:var(--grey2);display:flex;align-items:center;gap:6px}
+/* dock */
+.dock{border-top:1px solid transparent;padding:6px 12px 14px;background:#fff;display:flex;flex-direction:column;gap:8px}
+.opts{display:flex;flex-direction:column;gap:8px;padding:0 4px}
+.opts .lab{font-size:12px;color:var(--grey);font-weight:500}
+.opt{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:14px;padding:12px 14px 12px 12px;text-align:left;width:100%;background:#fff;animation:up .3s ease both}
+.opt:nth-child(3){animation-delay:.08s}.opt:nth-child(4){animation-delay:.16s}
+.opt b{display:block;font-size:14px}.opt span{font-size:12px;color:var(--grey)}
+.opt .ib{width:34px;height:34px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 4px}
+.chip{border:1px solid var(--line);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:500;background:#fff;animation:up .25s ease both}
+.pastechip{align-self:flex-start;margin-left:4px;display:flex;align-items:center;gap:6px;background:var(--pt);color:var(--p-ink);border-radius:999px;padding:7px 12px;font-size:13px;font-weight:600;animation:up .3s ease}
+.comp{display:flex;align-items:flex-end;gap:10px;border:1px solid var(--line);border-radius:24px;padding:6px 6px 6px 12px;transition:border-color .2s}
+.comp.active{border:1.5px solid var(--p)}
+.comp textarea{flex:1;border:0;outline:none;resize:none;font-size:15px;line-height:1.45;padding:7px 0;max-height:120px;background:transparent}
+.comp .send{width:34px;height:34px;border-radius:50%;background:var(--ink);display:flex;align-items:center;justify-content:center;color:#fff;flex:none}
+.comp.active .send{background:var(--p)}
+.comp .ic{padding:7px 0;color:var(--ink)}
+/* sheet */
+.scrim{position:absolute;inset:0;background:rgba(28,27,46,.35);z-index:30;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.show{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;z-index:31;background:#fff;border-radius:24px 24px 0 0;padding:10px 20px 20px;transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column;gap:20px}
+.sheet.show{transform:none}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);align-self:center}
+.sheet h4{margin:0;font-size:18px}
+.sheet .sub{margin:-14px 0 0;font-size:13px;color:var(--grey)}
+.sl{display:flex;flex-direction:column;gap:10px}
+.sl .r{display:flex;justify-content:space-between;align-items:center;font-size:14px;font-weight:600}
+.sl .r span{font-size:13px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:24px;background:transparent;margin:0}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--c) var(--v),var(--surf) var(--v))}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:var(--surf)}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--c)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:24px;height:24px;border-radius:50%;background:#fff;border:2px solid var(--c);margin-top:-10px;box-shadow:0 1px 4px rgba(0,0,0,.15)}
+input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;background:#fff;border:2px solid var(--c)}
+.ends{display:flex;justify-content:space-between;font-size:11px;color:var(--grey2);margin-top:-4px}
+.hint{display:flex;gap:8px;align-items:flex-start;background:var(--pt2);border-radius:12px;padding:12px;font-size:13px;line-height:1.45}
+/* loading */
+.lbody{flex:1;padding:18px 16px;display:flex;flex-direction:column;gap:20px}
+.labels{background:var(--warm);border-radius:14px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.labels b{font-size:13px}
+.labels .row{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.labels .row div{display:flex;flex-direction:column;gap:4px;align-items:flex-start;font-size:12px;color:var(--grey)}
+.loader{display:flex;align-items:center;gap:14px}
+.spin{width:40px;height:40px;border-radius:50%;border:4px solid var(--surf);border-top-color:var(--p);animation:spin .9s linear infinite;flex:none}
+.spin.ok{animation:none;border-color:var(--gr);background:var(--gr);display:flex;align-items:center;justify-content:center;color:#fff}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loader h4{margin:0;font-size:18px}.loader p{margin:2px 0 0;font-size:13px;color:var(--grey);min-height:18px}
+.lbar{height:4px;border-radius:2px;background:var(--surf);overflow:hidden}.lbar i{display:block;height:100%;width:0;background:var(--p);border-radius:2px;transition:width .2s linear}
+.sheetp{border:1.5px solid #D1CFDD;border-radius:12px;overflow:hidden}
+.sheetp .hd{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 12px}
+.sheetp .hd .mono{font-size:12px;color:var(--ink);letter-spacing:.12em}
+.sheetp .hd span{display:block;font-size:12px;color:var(--grey);margin-top:3px}
+.sheetp .th{display:grid;grid-template-columns:118px 1fr;background:var(--surf);padding:8px 16px}
+.sheetp .th .mono{font-size:10px;color:var(--grey);letter-spacing:.12em}
+.sheetp .tr{display:grid;grid-template-columns:118px 1fr;padding:11px 16px;border-top:1px solid var(--line);font-size:14px;animation:up .3s ease both}
+.sheetp .tr:first-of-type{border-top:0}
+.sheetp .tr span{color:var(--grey);font-size:13px}.sheetp .tr b{font-weight:600}
+/* shortlist */
+#shortlist{background:var(--warm)}
+#shortlist .scroll{flex:1;padding:18px 16px 24px;display:flex;flex-direction:column;gap:14px}
+.sl-h h2{margin:0;font-size:22px;letter-spacing:-.01em}.sl-h p{margin:4px 0 0;font-size:13px;color:var(--grey)}
+.sample{font-size:11px;color:var(--grey2);margin-top:2px}
+.filters{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;flex:none}
+.filters::-webkit-scrollbar{display:none}
+.fl{flex:none;border:1px solid var(--line);background:#fff;border-radius:999px;padding:7px 12px;font-size:13px;font-weight:500}
+.fl.sel{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+.scard{padding:20px;display:flex;flex-direction:column;gap:16px;text-align:left;width:100%;animation:up .35s ease both}
+.scard .uname{font-size:18px}.scard .usub{font-size:13px;margin-top:4px}
+.scard .price b{font-size:22px}.scard .price span{font-size:12px}
+.scard .reason{font-size:14px}.scard .ib{width:32px;height:32px;border-radius:9px}
+.talk{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--p)}
+.bm.on svg{fill:var(--p);stroke:var(--p)}
+.botbar{padding:12px 16px 16px;border-top:1px solid var(--line);background:#fff;display:flex;flex-direction:column;align-items:center;gap:10px}
+.botbar .alt{font-size:13px;color:var(--grey)}.botbar .alt button{color:var(--p);font-weight:600}
+/* info sheet */
+.toast{position:absolute;left:16px;right:16px;bottom:16px;background:var(--ink);color:#fff;border-radius:14px;padding:12px 14px;font-size:13px;z-index:40;transform:translateY(200%);opacity:0;transition:transform .3s ease,opacity .3s}
+.toast.show{transform:none;opacity:1}
+</style>
+</head>
+<body>
+<div class="stage">
+  <aside class="aside">
+    <div class="mono" style="color:var(--p)">LEAPSCHOLAR · UX ASSIGNMENT</div>
+    <h1>Leap AI <span class="serif" style="color:var(--p);font-size:34px">Profile Agent</span></h1>
+    <p>A working prototype of the landing page and the AI profile agent, as it would run on leapscholar.com in mobile Chrome.</p>
+    <div class="paths">
+      <div class="path"><b>Path 1 · Answer a few questions</b>Questions appear one by one inside the chat.</div>
+      <div class="path"><b>Path 2 · Import from my AI tool</b>Copy a prompt, paste your AI’s reply, and Leap AI fills the gaps.</div>
+    </div>
+    <ul class="look"><li>The typing prompt on the landing page</li><li>The sticky button hiding near the FAQ</li><li>Diamonds guiding you through the questions</li><li>Shortlist filters and the parents card</li></ul>
+    <button class="restart" id="restart"><span data-i="rotate-ccw" data-s="16"></span>Restart prototype</button>
+    <small>Designed by Shivansh Nigam · University data shown is sample data.</small>
+  </aside>
+
+  <div class="devwrap"><div class="device"><div class="phone">
+    <div class="ctop" aria-hidden="true">
+      <div class="time">5:00</div>
+      <div class="sbar"><div class="bars"><i style="height:4px"></i><i style="height:6px"></i><i class="d" style="height:9px"></i><i class="d" style="height:12px"></i></div><span data-i="wifi" data-s="17" data-w="2.4"></span><span class="batt">33</span></div>
+      <div class="url"><span data-i="list-plus" data-s="20"></span><span>leapscholar.com</span><span data-i="share" data-s="20"></span></div>
+    </div>
+
+    <div class="vp" id="vp">
+      <!-- LANDING -->
+      <section class="screen on" id="landing">
+        <div class="scroll" id="lscroll">
+          <header class="lnav">
+            <div class="logo"><svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true"><path d="M12 1 22 5.5v8.2c0 5.6-4.3 9.7-10 11.3C6.3 23.4 2 19.3 2 13.7V5.5z" fill="#5452E4"/><path d="M7.5 8.5v8.5l4.5 2.5 4.5-2.5V8.5L12 11z" fill="#fff"/></svg><span><span class="l">LEAP</span><span class="s">SCHOLAR</span></span></div>
+            <button class="btn sm" data-info="signin">Sign in</button>
+          </header>
+          <div class="hero">
+            <div class="mono">LEAP AI · FREE</div>
+            <h1>Let <span class="serif">AI</span> find universities that actually fit you.</h1>
+            <p>Chat with Leap AI about your goals, scores and budget. Get a shortlist that explains why each university fits.</p>
+            <button class="ask" id="ask" aria-label="Start a chat with Leap AI"><span data-i="sparkles" data-s="18" style="color:var(--p)"></span><span class="ph"><span id="typed"></span><span class="caret"></span></span><span class="go"><span data-i="arrow-up" data-s="18" data-w="2.4" style="color:#fff"></span></span></button>
+            <div class="hchips"><button class="hchip" data-start>I’m not sure where to start</button><button class="hchip" data-start>Under ₹30L</button></div>
+            <div class="trust"><span data-i="shield-check" data-s="14" style="color:var(--lav)"></span>Free · Matches before signup · No sales calls</div>
+          </div>
+
+          <div class="sec">
+            <div class="sh"><div class="mono">WHAT YOU’LL GET</div><h2>A shortlist that <span class="serif">explains itself</span></h2><p>Every university comes with a label, the real cost and the reasons it fits you.</p></div>
+            <div class="card ucard">
+              <div class="urow"><span class="badge b-good"><i></i>Good fit</span><button class="ibtn bm" aria-label="Save" style="margin:-10px -10px -10px 0"><span data-i="bookmark" data-s="20" style="color:var(--grey)"></span></button></div>
+              <div><p class="uname">University of Glasgow</p><p class="usub">MSc Data Science · Glasgow, UK</p></div>
+              <div class="price"><b>₹24L</b><span>total, fees + living</span></div>
+              <div class="hr"></div>
+              <div class="reasons">
+                <div class="reason"><span class="ib p"><span data-i="book-open" data-s="16"></span></span>ML, big data and a live industry project</div>
+                <div class="reason"><span class="ib o"><span data-i="wallet" data-s="16"></span></span>Inside your ₹20–35L budget</div>
+                <div class="reason"><span class="ib g"><span data-i="map-pin" data-s="16"></span></span>Safe city, 2-year work visa</div>
+              </div>
+              <button class="btn soft" data-info="details">View details <span data-i="chevron-right" data-s="16"></span></button>
+            </div>
+          </div>
+
+          <div class="sec white">
+            <div class="sh"><div class="mono">HOW IT WORKS</div><h2>From chat to <span class="serif">shortlist</span></h2></div>
+            <div class="step"><span class="n"><span data-i="message-circle" data-s="18"></span></span><div><div class="mono">STEP 1</div><h3>Chat with Leap AI</h3><p>Answer a few questions, or import your details from a CV, marksheet or any AI tool.</p></div></div>
+            <div class="step"><span class="n"><span data-i="target" data-s="18"></span></span><div><div class="mono">STEP 2</div><h3>AI checks your chances</h3><p>Fees, admit chances, visas and outcomes for every course.</p></div></div>
+            <div class="step"><span class="n"><span data-i="list-checks" data-s="18"></span></span><div><div class="mono">STEP 3</div><h3>Get a shortlist that explains itself</h3><p>Plus a roadmap of what to do next.</p></div></div>
+          </div>
+
+          <div class="sec">
+            <div class="sh"><div class="mono">WHY TRUST IT</div><h2>Advice you can <span class="serif">check</span></h2></div>
+            <div class="stat"><b>3M+</b><span>student journeys in LeapScholar’s data behind every match</span></div>
+            <div class="card list">
+              <div class="li"><span class="ib p"><span data-i="target" data-s="16"></span></span><div><h4>Honest chances</h4><p>Every match is Ambitious, Good fit or Safe</p></div></div>
+              <div class="li"><span class="ib o"><span data-i="indian-rupee" data-s="16"></span></span><div><h4>Real cost in ₹</h4><p>Fees plus living, on every card</p></div></div>
+              <div class="li"><span class="ib g"><span data-i="phone-off" data-s="16"></span></span><div><h4>No pushy calls</h4><p>A counsellor only if you ask</p></div></div>
+            </div>
+            <button class="card pcard" data-info="parents"><span class="ib o" style="width:40px;height:40px;border-radius:12px"><span data-i="users" data-s="18"></span></span><div style="flex:1"><h4>Deciding with your parents?</h4><p>Share a simple summary on WhatsApp.</p></div><span data-i="chevron-right" data-s="18" style="color:var(--grey)"></span></button>
+          </div>
+
+          <div class="sec white" id="faq">
+            <div class="sh"><div class="mono">FAQ</div><h2>Questions students <span class="serif">ask</span></h2></div>
+            <div class="card" style="box-shadow:none;border:1px solid var(--line)">
+              <details><summary>Is it really free?<span data-i="plus" data-s="18" style="color:var(--p)"></span></summary><p>Yes. You see your matches before signing up. You only create an account to save your list.</p></details>
+              <details><summary>Will someone call me?<span data-i="plus" data-s="18" style="color:var(--p)"></span></summary><p>No. A counsellor reaches out only if you ask for one.</p></details>
+              <details><summary>How accurate are the chances?<span data-i="plus" data-s="18" style="color:var(--p)"></span></summary><p>They are based on past admits for profiles like yours, so treat them as a guide, not a promise.</p></details>
+            </div>
+          </div>
+
+          <div class="sec" style="padding-bottom:40px">
+            <div class="final" id="finalcard">
+              <div class="mono">NEXT STEP</div>
+              <h3>Ready to find what <span class="serif">fits you</span>?</h3>
+              <p>No signup until you want to save your list.</p>
+              <button class="btn white" data-start>Chat with Leap AI</button>
+            </div>
+          </div>
+        </div>
+        <div class="sticky" id="sticky"><button class="btn" style="width:100%" data-start>Chat with Leap AI <span data-i="arrow-right" data-s="18" data-w="2.2"></span></button></div>
+      </section>
+
+      <!-- CHAT -->
+      <section class="screen" id="chat">
+        <div class="topbar"><button class="ibtn" data-back aria-label="Back"><span data-i="arrow-left" data-s="22"></span></button><div class="t"><h3>Leap AI</h3><div class="on"><i></i>Online</div></div><button class="ibtn" aria-label="Talk to support" data-info="support"><span data-i="headset" data-s="22"></span></button></div>
+        <div class="prog" id="prog"><div class="r"><span>Your profile</span><b id="progtxt">0 of 8</b></div><div class="track"><i id="progbar"></i></div></div>
+        <div class="conv scroll" id="conv"></div>
+        <div class="dock" id="dock"></div>
+        <div class="scrim" id="scrim"></div>
+        <div class="sheet" id="sheet">
+          <div class="grab"></div>
+          <h4>How much do these matter?</h4>
+          <p class="sub">Drag both. This decides how I balance your list.</p>
+          <div class="sl"><div class="r">University name &amp; ranking<span id="v1" style="color:var(--grey)">A little</span></div><input type="range" id="r1" min="0" max="100" value="30" aria-label="University name and ranking" style="--c:#9A99A8;--v:30%"><div class="ends"><span>Doesn’t matter</span><span>Matters a lot</span></div></div>
+          <div class="sl"><div class="r">Teaching &amp; real-world skills<span id="v2" style="color:var(--p)">A lot</span></div><input type="range" id="r2" min="0" max="100" value="85" aria-label="Teaching and real-world skills" style="--c:#5452E4;--v:85%"><div class="ends"><span>Doesn’t matter</span><span>Matters a lot</span></div></div>
+          <div class="hint"><span data-i="sparkles" data-s="16" style="color:var(--p)"></span><span id="hint">Skills over name: mostly strong courses, with one or two big names as Ambitious picks.</span></div>
+          <button class="btn" id="slgo">Build my shortlist <span data-i="arrow-right" data-s="18" data-w="2.2"></span></button>
+        </div>
+      </section>
+
+      <!-- LOADING -->
+      <section class="screen" id="loading">
+        <div class="topbar"><button class="ibtn" data-back aria-label="Back"><span data-i="arrow-left" data-s="22"></span></button><div class="t"><h3>Leap AI</h3><div class="on"><i></i>Building your shortlist</div></div><button class="ibtn" aria-label="Talk to support" data-info="support"><span data-i="headset" data-s="22"></span></button></div>
+        <div class="lbody scroll">
+          <div class="labels"><b>Your matches will be labelled</b><div class="row"><div><span class="badge b-amb"><i></i>Ambitious</span>A stretch</div><div><span class="badge b-good"><i></i>Good fit</span>Right level</div><div><span class="badge b-safe"><i></i>Safe</span>Likely admit</div></div></div>
+          <div class="loader"><div class="spin" id="spin"></div><div style="flex:1"><h4 id="ltitle">Building your shortlist</h4><p id="lsub">Reading your profile</p></div></div>
+          <div class="lbar"><i id="lbar"></i></div>
+          <div class="sheetp">
+            <div class="hd"><div><div class="mono">PROFILE SHEET</div><span>Leap AI · confirmed by you</span></div><button style="display:flex;align-items:center;gap:4px;color:var(--p);font-weight:600;font-size:13px" data-info="edit"><span data-i="pencil" data-s="14"></span>Edit</button></div>
+            <div class="th"><span class="mono">FIELD</span><span class="mono">YOUR ANSWER</span></div>
+            <div id="rows"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SHORTLIST -->
+      <section class="screen" id="shortlist">
+        <div class="topbar"><button class="ibtn" data-back aria-label="Back"><span data-i="arrow-left" data-s="22"></span></button><div class="t"><h3>Your shortlist</h3></div><button class="ibtn" aria-label="Share" data-info="parents"><span data-i="share-2" data-s="20"></span></button></div>
+        <div class="scroll" id="sscroll">
+          <div class="sl-h"><h2>6 universities that fit you</h2><p id="slsub">MS Data Science · ₹20–35L · UK, Canada</p><div class="sample">Sample matches for this prototype</div></div>
+          <div class="filters" id="filters"></div>
+          <div id="cards" style="display:flex;flex-direction:column;gap:14px"></div>
+          <button class="card pcard" data-info="parents"><span class="ib o" style="width:40px;height:40px;border-radius:12px"><span data-i="users" data-s="18"></span></span><div style="flex:1"><h4>Deciding with your parents?</h4><p>Send them a simple summary</p></div><span data-i="chevron-right" data-s="18" style="color:var(--grey)"></span></button>
+        </div>
+        <div class="botbar"><button class="btn" style="width:100%" data-info="roadmap">See your roadmap <span data-i="map" data-s="18"></span></button><div class="alt">Want a human? <button data-info="counsellor">Talk to a counsellor</button></div></div>
+      </section>
+
+      <div class="toast" id="toast1"></div>
+      <div class="scrim" id="iscrim"></div>
+      <div class="sheet" id="info"><div class="grab"></div><h4 id="ititle"></h4><p style="margin:-8px 0 0;font-size:14px;color:var(--grey);line-height:1.5" id="itext"></p><button class="btn soft" id="iok">Got it</button></div>
+    </div>
+
+    <div class="cbot" aria-hidden="false">
+      <button aria-label="Browser back" data-back style="color:#fff"><span data-i="arrow-left" data-s="26" data-w="2"></span></button>
+      <span data-i="arrow-right" data-s="26" data-w="2" style="color:#8b8e90"></span>
+      <button class="plus" id="newtab" aria-label="New tab: restart prototype"><span data-i="plus" data-s="22" data-w="2.4" style="color:#fff"></span></button>
+      <span class="tabs">2</span>
+      <span data-i="ellipsis" data-s="26" data-w="2.6"></span>
+      <div class="home"></div>
+    </div>
+  </div></div></div>
+</div>
+
+<script>
+/* ---------- fit to window ---------- */
+function fit(){const native=matchMedia('(pointer:coarse)').matches&&innerWidth<=560;document.body.classList.toggle('native',native);if(native)return;
+  const narrow=innerWidth<820;document.body.classList.toggle('narrow',narrow);
+  const availH=innerHeight-32, availW=(narrow?innerWidth:innerWidth-380)-32;
+  const k=Math.min(1,availH/868,availW/414);document.documentElement.style.setProperty('--k',Math.max(.4,k).toFixed(3));}
+fit();addEventListener('resize',fit);
+/* ---------- icons ---------- */
+const ICONS={
+'arrow-left':'<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>','arrow-right':'<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>','arrow-up':'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>','plus':'<path d="M5 12h14"/><path d="M12 5v14"/>',
+'mic':'<path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/>',
+'headset':'<path d="M3 11h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-5Zm0 0a9 9 0 1 1 18 0m0 0v5a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3Z"/><path d="M21 16v2a4 4 0 0 1-4 4h-5"/>',
+'sparkles':'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+'share-2':'<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/>',
+'bookmark':'<path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/>','chevron-right':'<path d="m9 18 6-6-6-6"/>',
+'copy':'<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>','check':'<path d="M20 6 9 17l-5-5"/>',
+'clipboard':'<rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>',
+'message-circle':'<path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"/>','file-up':'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M12 12v6"/><path d="m15 15-3-3-3 3"/>',
+'file-text':'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8"/><path d="M16 13H8"/><path d="M16 17H8"/>',
+'book-open':'<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>',
+'wallet':'<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+'map-pin':'<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+'graduation-cap':'<path d="M21.42 10.922a1 1 0 0 0-.019-1.838L12.83 5.18a2 2 0 0 0-1.66 0L2.6 9.08a1 1 0 0 0 0 1.832l8.57 3.908a2 2 0 0 0 1.66 0z"/><path d="M22 10v6"/><path d="M6 12.5V16a6 3 0 0 0 12 0v-3.5"/>',
+'briefcase':'<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
+'target':'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>','indian-rupee':'<path d="M6 3h12"/><path d="M6 8h12"/><path d="m6 13 8.5 8"/><path d="M6 13h3"/><path d="M9 13c6.667 0 6.667-10 0-10"/>',
+'phone-off':'<path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="22" x2="2" y1="2" y2="22"/>',
+'users':'<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+'shield-check':'<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+'list-checks':'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/>',
+'lock':'<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+'thumbs-up':'<path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/>',
+'thumbs-down':'<path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/>',
+'volume-2':'<path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/><path d="M19.364 18.364a9 9 0 0 0 0-12.728"/>',
+'map':'<path d="M14.106 5.553a2 2 0 0 0 1.788 0l3.659-1.83A1 1 0 0 1 21 4.619v12.764a1 1 0 0 1-.553.894l-4.553 2.277a2 2 0 0 1-1.788 0l-4.212-2.106a2 2 0 0 0-1.788 0l-3.659 1.83A1 1 0 0 1 3 19.381V6.618a1 1 0 0 1 .553-.894l4.553-2.277a2 2 0 0 1 1.788 0z"/><path d="M15 5.764v15"/><path d="M9 3.236v15"/>',
+'pencil':'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/><path d="m15 5 4 4"/>',
+'share':'<path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"/><polyline points="16 6 12 2 8 6"/><line x1="12" x2="12" y1="2" y2="15"/>',
+'list-plus':'<path d="M11 12H3"/><path d="M16 6H3"/><path d="M16 18H3"/><path d="M18 9v6"/><path d="M21 12h-6"/>',
+'wifi':'<path d="M12 20h.01"/><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/>',
+'ellipsis':'<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>',
+'rotate-ccw':'<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>'
+};
+function svg(n,s=18,w=2){return `<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[n]||''}</svg>`}
+function paintIcons(root=document){root.querySelectorAll('[data-i]').forEach(e=>{if(e.dataset.done)return;e.innerHTML=svg(e.dataset.i,+e.dataset.s||18,+e.dataset.w||2);e.style.display='inline-flex';e.dataset.done=1;})}
+paintIcons();
+
+const $=s=>document.querySelector(s);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ---------- navigation ---------- */
+let current='landing',stack=[],run=0;
+function go(id,{dir='r',push=true}={}){if(id===current)return;const from=$('#'+current),to=$('#'+id);if(push)stack.push(current);from.classList.remove('on');to.classList.remove('in-r','in-l','fade');to.classList.add('on',dir==='r'?'in-r':dir==='l'?'in-l':'fade');current=id;}
+function back(){if(info.classList.contains('show')){closeInfo();return}if(sheet.classList.contains('show')){closeSheet();return}if(!stack.length)return;const prev=stack.pop();if(current==='chat'&&prev==='landing'){resetChat();}const wasLoad=current==='loading';if(wasLoad)run++;go(prev,{dir:'l',push:false});if(prev==='chat'&&(wasLoad||S.priority&&$('#scrim')&&!conv.querySelector('#qblock')&&S.budget))setTimeout(openSheet,250);}
+document.addEventListener('click',e=>{if(e.target.closest('[data-back]'))back();});
+
+/* ---------- landing ---------- */
+const qs=['Which universities fit a 7.5 CGPA?','MS in Data Science under ₹30L?','UK or Canada, which suits me?','What are my chances at Toronto?'];
+(async function typeLoop(){const el=$('#typed');let i=0;while(true){const t=qs[i%qs.length];for(let k=1;k<=t.length;k++){el.textContent=t.slice(0,k);await wait(55)}await wait(1600);for(let k=t.length;k>=0;k--){el.textContent=t.slice(0,k);await wait(22)}await wait(350);i++;}})();
+const sticky=$('#sticky');
+const io=new IntersectionObserver(es=>{const vis=es.some(x=>x.isIntersecting);},{root:$('#lscroll')});
+function checkSticky(){const sc=$('#lscroll');const faq=$('#faq');const top=faq.getBoundingClientRect().top-sc.getBoundingClientRect().top;sticky.classList.toggle('hide',top<sc.clientHeight-60);}
+$('#lscroll').addEventListener('scroll',checkSticky,{passive:true});
+document.querySelectorAll('[data-start]').forEach(b=>b.addEventListener('click',()=>startChat()));
+$('#ask').addEventListener('click',()=>startChat());
+$('.bm').addEventListener('click',e=>e.currentTarget.classList.toggle('on'));
+
+/* ---------- state ---------- */
+let S={};
+function resetState(){S={path:null,countries:[],start:null,course:null,edu:null,score:null,budget:null,deciding:null,priority:'Skills over name'};}
+resetState();
+
+/* ---------- chat ---------- */
+const conv=$('#conv'),dock=$('#dock'),sheet=$('#sheet'),scrim=$('#scrim');
+function scrollDown(){requestAnimationFrame(()=>conv.scrollTo({top:conv.scrollHeight,behavior:'smooth'}))}
+function setProg(n){$('#prog').classList.add('show');$('#progtxt').textContent=n+' of 8';$('#progbar').style.width=(n/8*100)+'%'}
+function resetChat(){run++;conv.innerHTML='';dock.innerHTML='';$('#prog').classList.remove('show');closeSheet(true);resetState();}
+async function aiSay(text,{actions=true,delay=650}={}){const my=run;const row=document.createElement('div');row.className='ai msg';row.innerHTML=`<span class="av">${svg('sparkles',14,2.2)}</span><div class="body"><div class="dots"><i></i><i></i><i></i></div></div>`;conv.appendChild(row);scrollDown();await wait(delay);if(my!==run)return null;const body=row.querySelector('.body');body.innerHTML='<div class="tx"></div>';const tx=body.querySelector('.tx');const words=text.split(' ');for(let i=0;i<words.length;i++){if(my!==run)return null;tx.textContent=words.slice(0,i+1).join(' ');if(i%4===0)scrollDown();await wait(28)}if(actions){const a=document.createElement('div');a.className='acts';a.innerHTML=svg('copy',15)+svg('thumbs-up',15)+svg('thumbs-down',15)+svg('volume-2',15);body.appendChild(a);}scrollDown();return row;}
+function userSay(text){const r=document.createElement('div');r.className='user msg';r.innerHTML=`<div class="bub">${esc(text)}</div>`;conv.appendChild(r);scrollDown();}
+function composer({placeholder='Message Leap AI',onSend}={}){const c=document.createElement('div');c.className='comp';c.innerHTML=`<span class="ic">${svg('plus',20)}</span><textarea rows="1" placeholder="${placeholder}" aria-label="Message"></textarea><span class="ic" style="color:var(--grey)">${svg('mic',18)}</span><button class="send" aria-label="Send">${svg('arrow-up',16,2.4)}</button>`;const ta=c.querySelector('textarea');ta.addEventListener('input',()=>{ta.style.height='auto';ta.style.height=Math.min(ta.scrollHeight,120)+'px';c.classList.toggle('active',!!ta.value.trim())});const send=()=>{const v=ta.value.trim();if(!v)return;ta.value='';ta.style.height='auto';c.classList.remove('active');(onSend||freeText)(v);};c.querySelector('.send').addEventListener('click',send);ta.addEventListener('keydown',e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send()}});return c;}
+async function freeText(v){userSay(v);await aiSay('Thanks! For this demo, pick one of the options so I can build your list.',{actions:false});}
+function setDock(...els){dock.innerHTML='';els.forEach(e=>e&&dock.appendChild(e));}
+
+async function startChat(seed){if(typeof seed!=='string')seed=null;resetChat();go('chat');const my=run;setDock(composer());await wait(250);if(my!==run)return;if(seed){userSay(seed);await wait(150);}await aiSay(seed?'Good question. To answer it properly I need to understand you a little first. How would you like to share your profile?':'Hi, I’m Leap AI 👋 The better I understand you, the better my suggestions. How would you like to share your profile?');if(my!==run)return;
+  const o=document.createElement('div');o.className='opts';o.innerHTML='<div class="lab">Pick one, you can mix later</div>'+[['message-circle','p','Answer a few questions','A few quick taps','manual'],['file-up','o','Upload CV or marksheet','PDF or photo','cv'],['sparkles','g','Import from my AI tool','ChatGPT, Gemini, Claude…','import']].map(([i,c,t,s,k])=>`<button class="opt" data-k="${k}"><span class="ib ${c}">${svg(i,16)}</span><span style="flex:1"><b>${t}</b><span>${s}</span></span><span style="color:var(--grey2)">${svg('chevron-right',16)}</span></button>`).join('');
+  o.addEventListener('click',e=>{const b=e.target.closest('.opt');if(!b)return;const k=b.dataset.k;if(k==='cv'){toast('Upload is coming next. Try one of the other two for now.');return}if(k==='manual')manualFlow();else importFlow();});
+  setDock(o,composer());}
+
+/* ----- path 1: manual ----- */
+const QUESTIONS=[
+ {id:'countries',q:'Which countries are you considering?',type:'multi',opts:[['🇬🇧','UK'],['🇨🇦','Canada'],['🇺🇸','USA'],['🇦🇺','Australia'],['🇩🇪','Germany'],['🇮🇪','Ireland']]},
+ {id:'start',q:'When do you want to start?',type:'single',opts:['Jan 2027','Sep 2027','2028 or later'],rec:'Jan 2027',cols:3},
+ {id:'course',q:'What do you want to study?',type:'text',ph:'e.g. MS Data Science',sugg:['MS Data Science','MS Computer Science','MBA']},
+ {id:'edu',q:'Highest education so far?',type:'single',opts:['12th std.','Bachelor’s','Master’s'],cols:3},
+ {id:'score',q:'Your CGPA or percentage',type:'text',ph:'e.g. 7.8 or 78%',num:true},
+ {id:'budget',q:'Total budget, fees plus living',type:'single',opts:['< ₹20L','₹20–35L','₹35–50L','₹50L+'],cols:2},
+ {id:'deciding',q:'Who’s deciding with you?',type:'single',opts:['Just me','With parents','Other'],cols:3}
+];
+function scrollToEl(el,off){const top=conv.scrollTop+(el.getBoundingClientRect().top-conv.getBoundingClientRect().top)-off;conv.scrollTo({top:Math.max(0,top),behavior:'smooth'});}
+async function manualFlow(){const my=run;S.path='manual';setDock();userSay('Answer a few questions');const ub=conv.lastElementChild;await aiSay('Great. Answer one and the next one appears. You can change any answer.',{actions:false});if(my!==run)return;setProg(0);
+  const qb=document.createElement('div');qb.className='qblock msg';qb.id='qblock';conv.appendChild(qb);
+  const sp=document.createElement('div');sp.id='qspacer';sp.style.cssText='flex:none;height:'+Math.round(conv.clientHeight*0.35)+'px';conv.appendChild(sp);
+  renderQ(0);renderQ(1);updateDia();setTimeout(()=>scrollToEl(ub,14),60);}
+function answered(){return QUESTIONS.filter(q=>q.id==='countries'?S.countries.length&&S._countriesDone:S[q.id]).length}
+function updateDia(){const qb=$('#qblock');if(!qb)return;let act=false;QUESTIONS.forEach(q=>{const el=qb.querySelector('[data-q="'+q.id+'"]');if(!el)return;el.classList.remove('done','active','pending');if(isDone(q))el.classList.add('done');else if(!act){el.classList.add('active');act=true}else el.classList.add('pending');});}
+function isDone(q){return q.id==='countries'?!!(S.countries.length&&S._countriesDone):!!S[q.id]}
+function afterAnswer(i){setProg(answered());setTimeout(updateDia,0);const qb=$('#qblock');const nx=i+2;if(nx<QUESTIONS.length&&!qb.querySelector('[data-q="'+QUESTIONS[nx].id+'"]'))renderQ(nx);
+  if(answered()===QUESTIONS.length){showContinue();return}
+  const firstOpen=QUESTIONS.find(q=>!isDone(q)&&qb.querySelector('[data-q="'+q.id+'"]'));if(firstOpen){const el=qb.querySelector('[data-q="'+firstOpen.id+'"]');const idx=QUESTIONS.indexOf(firstOpen);if(idx>i)setTimeout(()=>scrollToEl(el,Math.round(conv.clientHeight*0.2)),80);}}
+function renderQ(i){const q=QUESTIONS[i];const qb=$('#qblock');const el=document.createElement('div');el.className='q';el.dataset.q=q.id;el.innerHTML=`<h5><span class="dia"></span>${q.q}</h5>`;
+  if(q.type==='multi'){const g=document.createElement('div');g.className='tiles';g.style.gridTemplateColumns='1fr 1fr';q.opts.forEach(([f,n])=>{const t=document.createElement('button');t.className='tile ctile';t.innerHTML=`<span class="top"><span>${f}</span><span class="cb">${svg('check',12,3)}</span></span><span>${n}</span>`;t.addEventListener('click',()=>{const k=S.countries.indexOf(n);k>=0?S.countries.splice(k,1):S.countries.push(n);t.classList.toggle('sel');nb.disabled=!S.countries.length;if(S._countriesDone){if(!S.countries.length)S._countriesDone=false;setProg(answered());updateDia();}});g.appendChild(t)});el.appendChild(g);
+    const nb=document.createElement('button');nb.className='btn soft okb';nb.textContent='Next';nb.disabled=true;nb.style.alignSelf='flex-start';nb.addEventListener('click',()=>{S._countriesDone=true;nb.style.display='none';afterAnswer(i)});el.appendChild(nb);}
+  else if(q.type==='single'){const g=document.createElement('div');g.className='tiles';g.style.gridTemplateColumns=`repeat(${q.cols||3},1fr)`;q.opts.forEach(o=>{const t=document.createElement('button');t.className='tile';t.innerHTML=esc(o)+(q.rec===o?'<span class="rec">Recommended</span>':'');t.addEventListener('click',()=>{g.querySelectorAll('.tile').forEach(x=>x.classList.remove('sel'));t.classList.add('sel');S[q.id]=o;afterAnswer(i)});g.appendChild(t)});el.appendChild(g);}
+  else{const r=document.createElement('div');r.className='inrow';r.innerHTML=`<input class="inp" placeholder="${q.ph}" ${q.num?'inputmode="decimal"':''} aria-label="${q.q}"><button class="btn soft okb">OK</button>`;const inp=r.querySelector('input'),ok=r.querySelector('button');const commit=()=>{const v=inp.value.trim();if(!v)return;S[q.id]=v;ok.textContent='✓';afterAnswer(i)};ok.addEventListener('click',commit);inp.addEventListener('focus',()=>{},{passive:true});inp.addEventListener('keydown',e=>{if(e.key==='Enter')commit()});inp.addEventListener('input',()=>{ok.textContent='OK'});el.appendChild(r);
+    if(q.sugg){const s=document.createElement('div');s.className='sugg';q.sugg.forEach(x=>{const b=document.createElement('button');b.className='sg';b.textContent=x;b.addEventListener('click',()=>{inp.value=x;commit()});s.appendChild(b)});el.appendChild(s);}
+    setTimeout(()=>{},0);}
+  qb.appendChild(el);}
+function showContinue(){if(dock.querySelector('#qcont'))return;const w=document.createElement('div');w.style.cssText='display:flex;flex-direction:column;gap:8px';w.innerHTML=`<button class="btn" id="qcont">Continue ${svg('arrow-right',18,2.2)}</button><div class="done-note" style="justify-content:center">${svg('lock',12)}Your details are safe with us</div>`;w.querySelector('#qcont').addEventListener('click',finishManual);setDock(w);const lq=$('#qblock .q:last-child');if(lq)setTimeout(()=>scrollToEl(lq,Math.round(conv.clientHeight*0.2)),80);}
+async function finishManual(){const my=run;const qb=$('#qblock');qb.style.transition='opacity .25s, transform .25s';qb.style.opacity='0';qb.style.transform='translateY(-6px)';await wait(260);qb.remove();const qs_=$('#qspacer');if(qs_)qs_.remove();setDock(composer());
+  const sum=[S.countries.join(', '),S.start,S.course,`${S.edu}, ${S.score} ${/%/.test(S.score)?'':'CGPA'}`.trim(),S.budget,S.deciding].join(' · ');userSay(sum);await aiSay('Got it. Last one: how much do these matter to you?',{actions:false});if(my!==run)return;openSheet();}
+
+/* ----- path 2: import ----- */
+const PROMPT='Summarise what you know about me for a study-abroad advisor: education and scores, what I want to study, countries I’m considering, budget, and what matters most to me. Keep it under 8 lines.';
+const SAMPLE='Shivansh is a final-year B.Tech student (7.8 CGPA) who wants an MS in Data Science. Considering the UK and Canada. Cares more about practical skills than rankings. Parents are part of the decision.';
+async function importFlow(){const my=run;S.path='import';setDock(composer({placeholder:'Paste your AI’s reply here'}));userSay('Import from my AI tool');await aiSay('Easy. Copy this prompt into the AI you already use, then paste its reply here.',{actions:false});if(my!==run)return;
+  const p=document.createElement('div');p.className='prompt msg';p.innerHTML=`<div class="h"><span class="mono">PROMPT</span><button class="copy">${svg('copy',13,2)}<span>Copy prompt</span></button></div><p>${PROMPT}</p>`;conv.appendChild(p);const w=document.createElement('div');w.className='works msg';w.textContent='Works with ChatGPT, Gemini, Claude or Copilot';conv.appendChild(w);scrollDown();
+  const cb=p.querySelector('.copy');cb.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(PROMPT)}catch(e){}cb.classList.add('done');cb.innerHTML=svg('check',13,2.4)+'<span>Copied</span>';await wait(500);showPaste();});}
+function showPaste(){if(dock.querySelector('.pastechip'))return;const chip=document.createElement('button');chip.className='pastechip';chip.innerHTML=svg('clipboard',14)+'Paste your AI’s reply';const comp=composer({placeholder:'Paste your AI’s reply here',onSend:sendImport});chip.addEventListener('click',async()=>{const ta=comp.querySelector('textarea');chip.remove();ta.focus();for(let k=0;k<=SAMPLE.length;k+=6){ta.value=SAMPLE.slice(0,k);ta.dispatchEvent(new Event('input'));await wait(12)}ta.value=SAMPLE;ta.dispatchEvent(new Event('input'));});setDock(chip,comp);}
+async function sendImport(v){const my=run;const r=document.createElement('div');r.className='user msg';r.innerHTML=`<div class="fileb"><div class="h"><span class="ib p" style="width:34px;height:34px">${svg('file-text',16)}</span><div><b>Pasted summary</b><span>From my AI tool</span></div></div><p>${esc(v)}</p></div>`;conv.appendChild(r);scrollDown();setDock(composer());
+  S.countries=['UK','Canada'];S.course='MS Data Science';S.edu='B.Tech';S.score='7.8';S.deciding='With parents';S.start='Sep 2027';setProg(5);
+  await aiSay('Thanks, I read it. Final-year B.Tech, 7.8 CGPA, into Data Science, looking at the UK and Canada. What’s your total budget, fees plus living?');if(my!==run)return;
+  const c=document.createElement('div');c.className='chips';['< ₹20L','₹20–35L','₹35–50L','₹50L+','Not sure yet'].forEach((o,i)=>{const b=document.createElement('button');b.className='chip';b.style.animationDelay=(i*0.05)+'s';b.textContent=o;b.addEventListener('click',async()=>{S.budget=o==='Not sure yet'?'Budget open':o;setDock(composer());userSay(o);setProg(7);await aiSay('Got it. Last one: how much do these matter to you?',{actions:false});if(my!==run)return;openSheet();});c.appendChild(b)});setDock(c,composer());}
+
+/* ----- sliders sheet ----- */
+const r1=$('#r1'),r2=$('#r2');
+function lbl(v){return v<20?'Not at all':v<45?'A little':v<70?'Somewhat':'A lot'}
+function upd(){r1.style.setProperty('--v',r1.value+'%');r2.style.setProperty('--v',r2.value+'%');$('#v1').textContent=lbl(+r1.value);$('#v2').textContent=lbl(+r2.value);const a=+r1.value,b=+r2.value;let h,p;if(b-a>15){h='Skills over name: mostly strong courses, with one or two big names as Ambitious picks.';p='Skills over name'}else if(a-b>15){h='Name over skills: more top-ranked universities, fewer Safe picks.';p='Name over skills'}else{h='Balanced: a mix of strong courses and well-known names.';p='Balanced'}$('#hint').textContent=h;S.priority=p;}
+r1.addEventListener('input',upd);r2.addEventListener('input',upd);
+function openSheet(){upd();scrim.classList.add('show');sheet.classList.add('show');}
+function closeSheet(instant){scrim.classList.remove('show');sheet.classList.remove('show');}
+scrim.addEventListener('click',()=>closeSheet());
+$('#slgo').addEventListener('click',()=>{closeSheet();setProg(8);setTimeout(startLoading,250)});
+
+/* ---------- loading ---------- */
+async function startLoading(){go('loading');const my=++run;const rows=$('#rows');rows.innerHTML='';$('#lbar').style.width='0';const sp=$('#spin');sp.className='spin';sp.innerHTML='';$('#ltitle').textContent='Building your shortlist';
+  const edu=S.path==='import'?'B.Tech · 7.8 CGPA':`${S.edu||'Bachelor’s'} · ${S.score||''}${S.score&&!/%/.test(S.score)?' CGPA':''}`;
+  const data=[['Course',S.course||'MS Data Science'],['Academics',edu],['Countries',(S.countries.length?S.countries:['UK','Canada']).join(', ')],['Budget',(S.budget||'₹20–35L')+(S.budget&&S.budget.includes('₹')?' total':'')],['Priority',S.priority],['Deciding',S.deciding||'With parents']];
+  const subs=['Reading your profile','Checking 1,240 courses','Comparing fees in ₹','Checking admit chances','Looking at visa rules','Labelling your matches'];
+  for(let i=0;i<data.length;i++){if(my!==run)return;const r=document.createElement('div');r.className='tr';r.innerHTML=`<span>${data[i][0]}</span><b>${esc(data[i][1])}</b>`;rows.appendChild(r);$('#lsub').textContent=subs[i];$('#lbar').style.width=((i+1)/data.length*100)+'%';await wait(560);}
+  if(my!==run)return;sp.className='spin ok';sp.innerHTML=svg('check',20,3);$('#ltitle').textContent='Your shortlist is ready';$('#lsub').textContent='6 universities, each with its reasons';await wait(900);if(my!==run)return;buildShortlist();go('shortlist',{dir:'f',push:false});}
+
+/* ---------- shortlist ---------- */
+const UNIS=[
+ {n:'University of Glasgow',c:'MSc Data Science · Glasgow, UK',f:'Good fit',cost:'₹24L',r:[['book-open','p','ML, big data and a live industry project'],['map-pin','g','Safe city, 2-year work visa']],talk:true},
+ {n:'University of Toronto',c:'MScAC · Toronto, Canada',f:'Ambitious',cost:'₹34L',r:[['graduation-cap','p','Big name, your CGPA is just above their bar'],['briefcase','g','Co-op internship built in']]},
+ {n:'University of Edinburgh',c:'MSc Data Science · Edinburgh, UK',f:'Good fit',cost:'₹28L',r:[['book-open','p','Strong machine learning research'],['wallet','o','Inside your budget']]},
+ {n:'University of Waterloo',c:'MDSAI · Waterloo, Canada',f:'Good fit',cost:'₹31L',r:[['briefcase','g','Known for industry co-ops'],['wallet','o','Upper end of your budget']]},
+ {n:'University of Leeds',c:'MSc Data Science · Leeds, UK',f:'Safe',cost:'₹22L',r:[['book-open','p','Strong applied statistics modules'],['wallet','o','Well inside your budget']]},
+ {n:'Dalhousie University',c:'MSc Computer Science · Halifax, Canada',f:'Safe',cost:'₹21L',r:[['map-pin','g','Calm, affordable student city'],['wallet','o','Lowest cost on your list']]}];
+const BCLS={'Good fit':'b-good','Ambitious':'b-amb','Safe':'b-safe'};let filt='All';
+function buildShortlist(){$('#slsub').textContent=`${S.course||'MS Data Science'} · ${S.budget||'₹20–35L'} · ${(S.countries.length?S.countries:['UK','Canada']).join(', ')}`;filt='All';renderFilters();renderCards();$('#sscroll').scrollTop=0;}
+function renderFilters(){const cnt=f=>UNIS.filter(u=>u.f===f).length;const fs=[['All','All 6'],['Ambitious','Ambitious '+cnt('Ambitious')],['Good fit','Good fit '+cnt('Good fit')],['Safe','Safe '+cnt('Safe')]];$('#filters').innerHTML=fs.map(([k,t])=>`<button class="fl ${k===filt?'sel':''}" data-f="${k}">${t}</button>`).join('');}
+$('#filters').addEventListener('click',e=>{const b=e.target.closest('.fl');if(!b)return;filt=b.dataset.f;renderFilters();renderCards();});
+function renderCards(){const list=UNIS.filter(u=>filt==='All'||u.f===filt);$('#cards').innerHTML=list.map((u,i)=>`<div class="card scard" style="animation-delay:${i*0.06}s"><div class="urow"><span class="badge ${BCLS[u.f]}"><i></i>${u.f}</span><button class="ibtn bm" aria-label="Save" style="margin:-10px -10px -10px 0">${svg('bookmark',20)}</button></div><div><p class="uname">${u.n}</p><p class="usub">${u.c}</p></div><div class="price"><b>${u.cost}</b><span>total, fees + living</span></div><div class="hr"></div><div class="reasons">${u.r.map(([ic,c,t])=>`<div class="reason"><span class="ib ${c}">${svg(ic,15)}</span>${t}</div>`).join('')}</div>${u.talk?`<button class="talk" data-info="student">${svg('message-circle',15)}Talk to a student there</button>`:''}</div>`).join('');
+  $('#cards').querySelectorAll('.bm').forEach(b=>b.addEventListener('click',()=>{b.classList.toggle('on');toast(b.classList.contains('on')?'Saved. Sign in later to keep your list.':'Removed from saved')}));}
+
+/* ---------- info sheet + toast ---------- */
+const info=$('#info'),iscrim=$('#iscrim');
+const INFO={signin:['Sign in','You can sign in to save your list, but you don’t need an account to see your matches.'],details:['University details','The full page shows modules, fees, intakes, admit history and visa rules. Not part of this prototype.'],parents:['Share with parents','Creates a simple summary of cost, safety and job prospects that parents can read on WhatsApp. Coming next.'],support:['Talk to a person','Opens LeapScholar support or a counsellor, only when the student asks for it.'],edit:['Edit your profile','Any answer can be changed here and the list updates. Not part of this prototype.'],roadmap:['Your roadmap','The next step: exams, deadlines and documents for your shortlist, step by step. Coming next.'],counsellor:['Talk to a counsellor','An optional human expert, never forced. Coming next.'],student:['Talk to a student there','Chat with a current student at this university before you decide. Coming next.']};
+function openInfo(k){const [t,x]=INFO[k];$('#ititle').textContent=t;$('#itext').textContent=x;iscrim.classList.add('show');info.classList.add('show');}
+function closeInfo(){iscrim.classList.remove('show');info.classList.remove('show');}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-info]');if(b)openInfo(b.dataset.info);});
+$('#iok').addEventListener('click',closeInfo);iscrim.addEventListener('click',closeInfo);
+let tt;function toast(m){const t=$('#toast1');t.textContent=m;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),2200);}
+
+/* keep fixed containers from being scrolled by input focus */
+['#vp','#chat','#loading','#shortlist','#landing'].forEach(q=>{const e=$(q);e.addEventListener('scroll',()=>{if(e.scrollTop||e.scrollLeft){e.scrollTop=0;e.scrollLeft=0}})});
+/* ---------- restart ---------- */
+function restartAll(){resetChat();closeInfo();stack=[];document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on','in-r','in-l','fade'));$('#landing').classList.add('on','fade');current='landing';$('#lscroll').scrollTop=0;checkSticky();}
+$('#restart').addEventListener('click',restartAll);$('#newtab').addEventListener('click',restartAll);
+checkSticky();
+</script>
+</body>
+</html>
